@@ -102,7 +102,7 @@ public class App {
                             escpos.write(pdf417, operacion.getDatos());
                             break;
                         case "qr":
-                            qrcode.setSize(5);
+                            qrcode.setSize(6);
                             qrcode.setJustification(Justification.Center);
                             escpos.write(qrcode, operacion.getDatos());
                             break;
