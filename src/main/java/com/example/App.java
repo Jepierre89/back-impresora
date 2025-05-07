@@ -3,6 +3,7 @@ package com.example;
 import com.github.anastaciocintra.escpos.EscPos;
 import com.github.anastaciocintra.escpos.Style;
 import com.github.anastaciocintra.escpos.EscPos.CutMode;
+import com.github.anastaciocintra.escpos.EscPos.PinConnector;
 import com.github.anastaciocintra.escpos.EscPosConst.Justification;
 import com.github.anastaciocintra.escpos.Style.FontSize;
 import com.github.anastaciocintra.escpos.barcode.BarCode;
@@ -17,8 +18,6 @@ import com.google.gson.Gson;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.MultiFormatWriter;
 import com.google.zxing.client.j2se.MatrixToImageWriter;
-import spark.Request;
-import spark.Response;
 import spark.Spark;
 
 import javax.imageio.ImageIO;
@@ -34,7 +33,7 @@ import java.util.Map; // Para manejar los datos del JSON
 
 public class App {
     public static void main(String[] args) {
-        Spark.port(8080);
+        Spark.port(8081);
         Spark.after((request, response) -> {
             response.header("Access-Control-Allow-Origin", "*");
             response.header("Access-Control-Allow-Methods", "*");
@@ -219,5 +218,32 @@ public class App {
                 return false;
             }
         });
+
+        Spark.get("/abrir-monedero", (request, response) -> {
+    String printerName = request.queryParams("printer");
+
+    if (printerName == null || printerName.isEmpty()) {
+        response.status(400);
+        return "Falta el nombre de la impresora";
+    }
+
+    try {
+        PrintService printService = PrinterOutputStream.getPrintServiceByName(printerName);
+        PrinterOutputStream printerOutputStream = new PrinterOutputStream(printService);
+        EscPos escpos = new EscPos(printerOutputStream);
+
+        // Envía el pulso al monedero
+        escpos.pulsePin(EscPos.PinConnector.Pin_2,25,250);
+        escpos.close();
+
+        return "Monedero abierto correctamente";
+    } catch (Exception e) {
+        e.printStackTrace();
+        response.status(500);
+        return "Error al abrir el monedero: " + e.getMessage();
+    }
+});
+
+
     }
 }
