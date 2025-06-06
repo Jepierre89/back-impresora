@@ -3,7 +3,6 @@ package com.example;
 import com.github.anastaciocintra.escpos.EscPos;
 import com.github.anastaciocintra.escpos.Style;
 import com.github.anastaciocintra.escpos.EscPos.CutMode;
-import com.github.anastaciocintra.escpos.EscPos.PinConnector;
 import com.github.anastaciocintra.escpos.EscPosConst.Justification;
 import com.github.anastaciocintra.escpos.Style.FontSize;
 import com.github.anastaciocintra.escpos.barcode.BarCode;
@@ -18,6 +17,8 @@ import com.google.gson.Gson;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.MultiFormatWriter;
 import com.google.zxing.client.j2se.MatrixToImageWriter;
+import spark.Request;
+import spark.Response;
 import spark.Spark;
 
 import javax.imageio.ImageIO;
@@ -28,8 +29,6 @@ import java.awt.image.BufferedImage;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map; // Para manejar los datos del JSON
-
 
 public class App {
     public static void main(String[] args) {
@@ -83,7 +82,7 @@ public class App {
 
                 for (Operaciones operacion : operaciones) {
                     switch (operacion.getAccion()) {
-                        case "textalign":
+                        case "textaling":
                             switch (operacion.getDatos()) {
                                 case "center":
                                     sty.setJustification(Justification.Center);
@@ -101,7 +100,7 @@ public class App {
                             escpos.write(pdf417, operacion.getDatos());
                             break;
                         case "qr":
-                            qrcode.setSize(6);
+                            qrcode.setSize(3);
                             qrcode.setJustification(Justification.Center);
                             escpos.write(qrcode, operacion.getDatos());
                             break;
@@ -110,13 +109,6 @@ public class App {
                             break;
                         case "feed":
                             escpos.feed(Integer.parseInt(operacion.getDatos()));
-                            break;
-                        case "bold": 
-                            if ("on".equals(operacion.getDatos())) { 
-                                sty.setBold(true); // Activa la negrita 
-                            } else if ("off".equals(operacion.getDatos())) { 
-                                sty.setBold(false); // Desactiva la negrita 
-                            }
                             break;
                         case "text":
                             escpos.writeLF(sty, operacion.getDatos());
@@ -162,50 +154,6 @@ public class App {
                             imageWrapper2.setJustification(Justification.Center);
                             escpos.write(imageWrapper2, escposImage2);
                             break;
-                        case "table":
-                            // Define los anchos de las columnas
-                            int col1Width = 8;  // Ancho para "Cantidad"
-                            int col2Width = 24; // Ancho para "Descripción"
-                            int col3Width = 10; // Ancho para "Precio"
-                            // Crear un estilo para encabezados en negrita
-                            Style boldStyle = new Style().setBold(true);
-                            // Encabezado de la tabla
-                            String header = String.format(
-                                "%-" + col1Width + "s%-" + col2Width + "s%-" + col3Width + "s",
-                                "CANT", "DESCRIPCION", "PRECIO"
-                            );
-                            escpos.writeLF(boldStyle,header);
-                        
-                            // Línea separadora
-                            escpos.writeLF(" ".repeat(col1Width + col2Width + col3Width));
-                        
-                            try {
-                                // Deserializar el JSON del campo `datos`
-                                Gson gsonx = new Gson();
-                                List<Map<String, Object>> tableData = gsonx.fromJson(operacion.getDatos(), List.class);
-                        
-                                // Iterar sobre las filas de la tabla
-                                for (Map<String, Object> row : tableData) {
-                                    // Convertir los valores al tipo String, y asegurar que cantidad sea un entero
-                                    String quantity = String.valueOf(((Double) row.getOrDefault("quantity", 0.0)).intValue());
-                                    String description = row.getOrDefault("description", "").toString();
-                                    String price = String.valueOf(row.getOrDefault("price", ""));
-                        
-                                    // Formatear la fila
-                                    String formattedRow = String.format(
-                                        "%-" + col1Width + "s%-" + col2Width + "s%-" + col3Width + "s",
-                                        quantity, description, price
-                                    );
-                                    escpos.writeLF(formattedRow);
-                                }
-                            } catch (Exception e) {
-                                e.printStackTrace();
-                                escpos.writeLF("Error al procesar la tabla.");
-                            }
-                            break;
-                        
-                        
-                        
                     }
                 }
 
@@ -213,37 +161,9 @@ public class App {
                 return true;
 
             } catch (Exception e) {
-                System.out.println(e);
                 e.printStackTrace();
                 return false;
             }
         });
-
-        Spark.get("/abrir-monedero", (request, response) -> {
-    String printerName = request.queryParams("printer");
-
-    if (printerName == null || printerName.isEmpty()) {
-        response.status(400);
-        return "Falta el nombre de la impresora";
-    }
-
-    try {
-        PrintService printService = PrinterOutputStream.getPrintServiceByName(printerName);
-        PrinterOutputStream printerOutputStream = new PrinterOutputStream(printService);
-        EscPos escpos = new EscPos(printerOutputStream);
-
-        // Envía el pulso al monedero
-        escpos.pulsePin(EscPos.PinConnector.Pin_2,25,250);
-        escpos.close();
-
-        return "Monedero abierto correctamente";
-    } catch (Exception e) {
-        e.printStackTrace();
-        response.status(500);
-        return "Error al abrir el monedero: " + e.getMessage();
-    }
-});
-
-
     }
 }
